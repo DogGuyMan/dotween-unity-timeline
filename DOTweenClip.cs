@@ -22,7 +22,11 @@
 
 using System;
 using DG.Tweening;
+#if ODIN_INSPECTOR
 using Sirenix.OdinInspector;
+#else
+using _Game_Assets.Scripts.Editor.Unity_Timeline;
+#endif
 using UnityEngine;
 using UnityEngine.Playables;
 using UnityEngine.Timeline;

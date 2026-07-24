@@ -46,6 +46,25 @@ namespace _Game_Assets.Scripts.Runtime.Unity_Timeline
         /// The binding source we are animating
         /// </summary>
         private Transform transform;
+
+        /// <summary>
+        /// Handles position via UI coordinates (anchoredPosition3D) for a RectTransform, or
+        /// world coordinates (position) for a regular Transform. Rotation and scale use the
+        /// same API (eulerAngles/localScale) for both types, so no branching is needed there.
+        /// Shared as static so it uses the same convention as the start-value capture in DOTweenTrack.
+        /// </summary>
+        public static Vector3 GetPosition(Transform target)
+        {
+            return target is RectTransform rect ? rect.anchoredPosition3D : target.position;
+        }
+
+        public static void SetPosition(Transform target, Vector3 position)
+        {
+            if (target is RectTransform rect)
+                rect.anchoredPosition3D = position;
+            else
+                target.position = position;
+        }
         /// <summary>
         /// True if our first frame has been processed, false otherwise
         /// </summary>
@@ -112,7 +131,7 @@ namespace _Game_Assets.Scripts.Runtime.Unity_Timeline
                 return;
             }
             
-            transform.position = trackBindingStartPosition;
+            SetPosition(transform, trackBindingStartPosition);
             transform.eulerAngles = trackBindingStartRotation;
             transform.localScale = trackBindingStartScale;
             base.OnGraphStop(playable);
@@ -130,7 +149,7 @@ namespace _Game_Assets.Scripts.Runtime.Unity_Timeline
             //so make sure to save any defaults before we start animating things, so we can easily rest them later
             if (!firstFrameProcessed)
             {
-                startPosition = transform.position;
+                startPosition = GetPosition(transform);
                 startRotation = transform.eulerAngles;
                 startScale = transform.localScale;
                 firstFrameProcessed = true;
@@ -180,13 +199,13 @@ namespace _Game_Assets.Scripts.Runtime.Unity_Timeline
             sequence.Goto((float)playable.GetTime());
             if (tweenPosition)
             {
-                transform.position = myPosition;
+                SetPosition(transform, myPosition);
             }
             if (tweenRotation)
             {
                 transform.eulerAngles = myRotation;
             }
-            if (tweenRotation)
+            if (tweenScale)
             {
                 transform.localScale = myScale;
             }
@@ -211,7 +230,7 @@ namespace _Game_Assets.Scripts.Runtime.Unity_Timeline
             
             if (tweenPosition)
             {
-                transform.position = startPosition;
+                SetPosition(transform, startPosition);
             }
             if (tweenRotation)
             {

@@ -48,7 +48,8 @@ namespace _Game_Assets.Scripts.Runtime.Unity_Timeline
             {
                 return playable;
             }
-            playable.GetBehaviour().Initialize(clip, trackBinding.position, trackBinding.eulerAngles, trackBinding.localScale);
+            // If the target is a RectTransform, capture position via anchoredPosition3D (same convention as the behavior).
+            playable.GetBehaviour().Initialize(clip, DOTweenBehavior.GetPosition(trackBinding), trackBinding.eulerAngles, trackBinding.localScale);
             return playable;
         }
         
