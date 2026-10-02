@@ -27,11 +27,17 @@ using UnityEngine.Timeline;
 namespace _Game_Assets.Scripts.Runtime.Unity_Timeline
 {
     /// <summary>
-    /// The track that we will be able to manipulate in modify our DOTween transform tween
+    /// A transform track. Hosts several clip types that all drive the bound <see cref="Transform"/>:
+    /// <see cref="DOTweenClip"/> for tweening to a target, <see cref="TransformShakeClip"/> for shaking.
+    /// <see cref="TrackClipTypeAttribute"/> allows multiple, so more clip types can be registered here.
+    ///
+    /// Clips on this track all write absolute values derived from the pose captured when they start,
+    /// so overlapping clips do not blend - the one evaluated last wins. Lay them out sequentially.
     /// </summary>
     [TrackColor(148/255f,222/255f,89/255f)]
     [TrackBindingType(typeof(Transform))]
     [TrackClipType(typeof(DOTweenClip))]
+    [TrackClipType(typeof(TransformShakeClip))]
     public class DOTweenTrack : TrackAsset
     {
         protected override Playable CreatePlayable(PlayableGraph graph, GameObject gameObject, TimelineClip clip)
@@ -41,18 +47,34 @@ namespace _Game_Assets.Scripts.Runtime.Unity_Timeline
             //CreatePlayable and pass the current clip to our behavior.
             //Thank my dude here https://forum.unity.com/threads/trying-to-get-percentage-of-the-way-through-playable.503672/#post-3281262
             //additional info here https://forum.unity.com/threads/timeline-adds-1-million-to-playable-getduration-when-extrapolation-is-set-to-anything-but-none.1324440/
-            var playable = (ScriptPlayable<DOTweenBehavior>)base.CreatePlayable(graph, gameObject, clip);
-            // grab the track so reference so that we can initialize our DOTween behavior with it's values
-            var trackBinding = gameObject.GetComponent<PlayableDirector>().GetGenericBinding(this) as Transform;
+            var playable = base.CreatePlayable(graph, gameObject, clip);
+
+            // grab the track binding so that we can initialize the clip's behavior with its values
+            var director = gameObject.GetComponent<PlayableDirector>();
+            var trackBinding = director == null ? null : director.GetGenericBinding(this) as Transform;
             if (trackBinding == null)
             {
                 return playable;
             }
-            // If the target is a RectTransform, capture position via anchoredPosition3D (same convention as the behavior).
-            playable.GetBehaviour().Initialize(clip, DOTweenBehavior.GetPosition(trackBinding), trackBinding.eulerAngles, trackBinding.localScale);
+
+            //this track accepts more than one clip type, so we must NOT blind-cast to a single behavior.
+            //converting a Playable to ScriptPlayable<T> validates the handle's actual playable type, so a
+            //hard cast throws as soon as a clip of another type is placed on this track. Branch on the clip
+            //asset instead - each clip type creates exactly one behavior type in its CreatePlayable.
+            if (clip.asset is DOTweenClip)
+            {
+                // If the target is a RectTransform, capture position via anchoredPosition3D (same convention as the behavior).
+                ((ScriptPlayable<DOTweenBehavior>)playable).GetBehaviour().Initialize(
+                    clip, DOTweenBehavior.GetPosition(trackBinding), trackBinding.eulerAngles, trackBinding.localScale);
+            }
+            else if (clip.asset is TransformShakeClip)
+            {
+                // Shake works in local space, so it captures a local pose rather than a world one.
+                ((ScriptPlayable<TransformShakeBehaviour>)playable).GetBehaviour().Initialize(
+                    clip, TransformShakeBehaviour.GetLocalPosition(trackBinding), trackBinding.localEulerAngles);
+            }
+
             return playable;
         }
-        
-        
     }
 }
